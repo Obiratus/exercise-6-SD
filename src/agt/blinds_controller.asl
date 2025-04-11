@@ -29,7 +29,8 @@ blinds("lowered").
     // performs an action that creates a new artifact of type ThingArtifact, named "wristband" using the WoT TD located at Url
     // the action unifies ArtId with the ID of the artifact in the workspace
     makeArtifact("blinds", "org.hyperagents.jacamo.artifacts.wot.ThingArtifact", [Url], ArtId);
-    !raise_blinds
+    .wait(3000);
+    //!raise_blinds
     .
 
 /*
@@ -50,7 +51,8 @@ blinds("lowered").
     invokeAction("https://was-course.interactions.ics.unisg.ch/wake-up-ontology#SetState",["raised"]);
     .print("Blinds raised");
     -+blinds("lowered");
-    +blinds("raised")
+    +blinds("raised");
+    !send_message("blinds manager", "tell", "raised"); 
     .
 
 /* 
@@ -61,9 +63,16 @@ blinds("lowered").
     invokeAction("https://was-course.interactions.ics.unisg.ch/wake-up-ontology#SetState",["lowered"]);
     .print("Blinds lowered");
     -+blinds("raised");
-    +blinds("lowered")
+    +blinds("lowered");
+    !send_message("blinds manager", "tell", "lowered"); 
     .
 
+
+/* Plan to send a message using the internal operation defined in the artifact */
+@send_message_plan
++!send_message(Sender, Performative, Content) : true <-
+    sendMsg(Sender, Performative, Content)
+    .
 
 
 

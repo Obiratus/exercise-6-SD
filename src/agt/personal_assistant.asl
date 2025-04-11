@@ -17,7 +17,8 @@ broadcast(mqtt).
     .my_name(MyName);
     makeArtifact("mqtt_artifact_pa", "room.MQTTArtifact", [MyName], ArtifactId); // Create and associate artifact
     focus(ArtifactId); // Focus on the artifact
-    !send_message("assistant", "tell", "Hello, this is a test message")
+    .wait(3000);
+    //!send_message("assistant", "tell", "Hello, this is a test message")
     .
     
 

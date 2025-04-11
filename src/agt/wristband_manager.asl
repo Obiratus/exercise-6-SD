@@ -23,9 +23,13 @@ owner_state(_).
 @start_plan
 +!start : td("https://was-course.interactions.ics.unisg.ch/wake-up-ontology#Wristband", Url) <-
     .print("[wristband manager] starting...");
+    .my_name(MyName);
+    makeArtifact("mqtt_artifact_wm", "room.MQTTArtifact", [MyName], ArtifactId); // Create and associate artifact
+    focus(ArtifactId); // Focus on the artifact
     // performs an action that creates a new artifact of type ThingArtifact, named "wristband" using the WoT TD located at Url
     // the action unifies ArtId with the ID of the artifact in the workspace
     makeArtifact("wristband", "org.hyperagents.jacamo.artifacts.wot.ThingArtifact", [Url], ArtId);
+    .wait(3000);
     !read_owner_state // creates the goal !read_owner_state
     .
 
@@ -42,7 +46,16 @@ owner_state(_).
     // the action unifies OwnerStateLst with a list holding the owner's state, e.g. ["asleep"]
     readProperty("https://was-course.interactions.ics.unisg.ch/wake-up-ontology#ReadOwnerState",  OwnerStateLst);
     .nth(0,OwnerStateLst,OwnerState); // performs an action that unifies OwnerState with the element of the list OwnerStateLst at index 0
+    ?owner_state(CurrentState);
+    !check_different(OwnerState,CurrentState,Result);
+    if (Result == true) { 
     -+owner_state(OwnerState); // updates the beleif owner_state 
+    !send_message("wristband manager", "tell",  OwnerState);
+    } else {
+        .print("The owner is still ", OwnerState);
+        .print("No owner state changes to publish");
+    };
+
     .wait(5000);
     !read_owner_state // creates the goal !read_owner_state
     . 
@@ -57,6 +70,23 @@ owner_state(_).
 +owner_state(State) : true <-
     .print("The owner is ", State)
     .
+
+
+/* Plan to send a message using the internal operation defined in the artifact */
+@send_message_plan
++!send_message(Sender, Performative, Content) : true <-
+    sendMsg(Sender, Performative, Content)
+    .
+
+@check_different_plan
++!check_different(New, Current, Result) : true <-
+    if (New == Current) { // Correctly formatted condition
+        Result = false; // Action inside the `if` block
+    } else {
+        Result = true; // Action inside the `else` block
+    }
+    .
+
 
 /* Import behavior of agents that work in CArtAgO environments */
 { include("$jacamoJar/templates/common-cartago.asl") }

@@ -102,7 +102,7 @@ public class MQTTArtifact extends Artifact {
         if ("tell".equalsIgnoreCase(performative)) {
             // Define an observable property for the received message
             defineObsProperty("received_message", agent, performative, content);
-            System.out.println("["+ agent + "] Observable property added: " + agent + ", " + content);
+            //     System.out.println("["+ agent + "] Observable property added: " + agent + ", " + content);
         } else {
             System.out.println("["+ agent + "] Unsupported performative received: " + performative);
         }
@@ -157,7 +157,7 @@ public class MQTTArtifact extends Artifact {
             try {
                 // Parse the received message
                 String payload = new String(message.getPayload());
-                System.out.println("[MQTTArtifact] Message received: " + payload);
+                // System.out.println("[MQTTArtifact] Message received: " + payload);
                 String[] parts = payload.split(",", 3); // Split into agent, performative, and content
                 if (parts.length == 3) {
                     String agent = parts[0];
@@ -178,7 +178,7 @@ public class MQTTArtifact extends Artifact {
 
         @Override
         public void deliveryComplete(IMqttDeliveryToken token) {
-            System.out.println("[MQTTArtifact] Message delivery complete.");
+            //     System.out.println("[MQTTArtifact] Message delivery complete.");
         }
     }
 

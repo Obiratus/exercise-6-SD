@@ -27,6 +27,7 @@ lights("off").
     makeArtifact("mqtt_artifact_lc", "room.MQTTArtifact", [MyName], ArtifactId); // Create and associate artifact
     focus(ArtifactId); // Focus on the artifact
     makeArtifact("lights", "org.hyperagents.jacamo.artifacts.wot.ThingArtifact", [Url], ArtId);
+    .wait(3000);
     //!turn_light_on
     .
 
@@ -48,7 +49,8 @@ lights("off").
     invokeAction("https://was-course.interactions.ics.unisg.ch/wake-up-ontology#SetState",["on"]);
     .print("Lights turned on");
     -+lights("off");
-    +lights("on")
+    +lights("on");
+    !send_message("lights manager", "tell", "on"); 
     .
 
 /* 
@@ -59,7 +61,15 @@ lights("off").
     invokeAction("https://was-course.interactions.ics.unisg.ch/wake-up-ontology#SetState",["off"]);
     .print("Lights turned off");
     -+lights("on");
-    +lights("off")
+    +lights("off");
+    !send_message("lights manager", "tell", "off"); 
+
+    .
+
+/* Plan to send a message using the internal operation defined in the artifact */
+@send_message_plan
++!send_message(Sender, Performative, Content) : true <-
+    sendMsg(Sender, Performative, Content)
     .
 
 

@@ -1,6 +1,8 @@
 // calendar manager agent
 
 /* Initial beliefs */
+upcoming_event(none).
+
 
 // The agent has a belief about the location of the W3C Web of Thing (WoT) Thing Description (TD)
 // that describes a Thing of type https://was-course.interactions.ics.unisg.ch/wake-up-ontology#CalendarService (was:CalendarService)
@@ -20,9 +22,13 @@ td("https://was-course.interactions.ics.unisg.ch/wake-up-ontology#CalendarServic
 @start_plan
 +!start : td("https://was-course.interactions.ics.unisg.ch/wake-up-ontology#CalendarService", Url) <-
     .print("[calendar manager] starting...");
+    .my_name(MyName);
+    makeArtifact("mqtt_artifact_cm", "room.MQTTArtifact", [MyName], ArtifactId); // Create and associate artifact
+    focus(ArtifactId); // Focus on the artifact
     // performs an action that creates a new artifact of type ThingArtifact, named "wristband" using the WoT TD located at Url
     // the action unifies ArtId with the ID of the artifact in the workspace
     makeArtifact("calendar", "org.hyperagents.jacamo.artifacts.wot.ThingArtifact", [Url], ArtId);
+    .wait(3000);
     !read_upcoming_event.
 
 /* 
@@ -37,9 +43,46 @@ td("https://was-course.interactions.ics.unisg.ch/wake-up-ontology#CalendarServic
     // performs an action that exploits the TD Property Affordance of type was:ReadUpcomingEvent 
     readProperty("https://was-course.interactions.ics.unisg.ch/wake-up-ontology#ReadUpcomingEvent",  EventList);
     .nth(0,EventList,Event); 
-    .print("Upcoming event: ", Event);
+    
+    // Check if the event has changed and publish only in that case
+    ?upcoming_event(CurrentEvent);
+    !check_different(Event,CurrentEvent,Result);
+    if (Result == true) { 
+        +upcoming_event(Event); // Update the stored belief about the event
+        .print("Upcoming event changed. New event: ", Event);
+        !send_message("calendar manager", "tell", Event); // Send MQTT message for the new event
+    } else {
+        .print("Upcoming event is still: ", Event);
+        .print("No Event changes to publish");
+    };
+
     .wait(5000);
     !read_upcoming_event. // creates the goal !read_upcoming_event
+
+
+
+/* Plan to send a message using the internal operation defined in the artifact */
+@send_message_plan
++!send_message(Sender, Performative, Content) : true <-
+    sendMsg(Sender, Performative, Content)
+    .
+
+/*
+ * Plan for determining whether two events are different
+ * Custom operation to check equality of two event strings
+ */
+@check_different_plan
++!check_different(New, Current, Result) : true <-
+    if (New == Current) { // Correctly formatted condition
+        Result = false; // Action inside the `if` block
+    } else {
+        Result = true; // Action inside the `else` block
+    }
+    .
+    
+
+
+
 
 
 
