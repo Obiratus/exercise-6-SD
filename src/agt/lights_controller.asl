@@ -25,7 +25,10 @@ lights("off").
     .print("Lights Controller starting...");
     .my_name(MyName);
     makeArtifact("mqtt_artifact_lc", "room.MQTTArtifact", [MyName], ArtifactId); // Create and associate artifact
-    focus(ArtifactId). // Focus on the artifact
+    focus(ArtifactId); // Focus on the artifact
+    makeArtifact("lights", "org.hyperagents.jacamo.artifacts.wot.ThingArtifact", [Url], ArtId);
+    //!turn_light_on
+    .
 
 /*
  * Plan to handle observable changes in the artifact
@@ -33,8 +36,33 @@ lights("off").
  */
 @handle_received_message
 +received_message(Sender, Performative, Content) : true <-
-    println("[Lights Controller] Message received from ", Sender, " with content: ", Content).
+    println("[Lights Controller] Message received from ", Sender, " with content: ", Content)
+    .
     
+
+/* 
+* Plan to switch on the lights.
+*/
+@turn_light_on_plan
++!turn_light_on : true <-
+    invokeAction("https://was-course.interactions.ics.unisg.ch/wake-up-ontology#SetState",["on"]);
+    .print("Lights turned on");
+    -+lights("off");
+    +lights("on")
+    .
+
+/* 
+* Plan to switch off the lights.
+*/
+@turn_light_off_plan
++!turn_light_off : true <-
+    invokeAction("https://was-course.interactions.ics.unisg.ch/wake-up-ontology#SetState",["off"]);
+    .print("Lights turned off");
+    -+lights("on");
+    +lights("off")
+    .
+
+
 
 
 /* Import behavior of agents that work in CArtAgO environments */

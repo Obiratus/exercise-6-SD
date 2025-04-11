@@ -13,16 +13,18 @@ broadcast(mqtt).
  * Body: Creates the artifact, initializes it, and sends a test message
  */
 +!start : true <-
-    .print("Personal assistant starting...");
+    .print("[personal assistant] starting...");
     .my_name(MyName);
     makeArtifact("mqtt_artifact_pa", "room.MQTTArtifact", [MyName], ArtifactId); // Create and associate artifact
     focus(ArtifactId); // Focus on the artifact
-    !send_message("assistant", "tell", "Hello, this is a test message").
+    !send_message("assistant", "tell", "Hello, this is a test message")
+    .
     
 
 /* Plan to send a message using the internal operation defined in the artifact */
 +!send_message(Sender, Performative, Content) : true <-
-    sendMsg(Sender, Performative, Content).
+    sendMsg(Sender, Performative, Content)
+    .
     
 
 /*
@@ -31,7 +33,8 @@ broadcast(mqtt).
  */
 @handle_received_message
 +received_message(Sender, Performative, Content) : true <-
-    println("[Assistant] Message received from ", Sender, " with content: ", Content).
+    println("[Assistant] Message received from ", Sender, " with content: ", Content)
+    .
     
 
 /* Plan for selective broadcasting */
@@ -42,7 +45,8 @@ broadcast(mqtt).
 
 +!selective_broadcast(Sender, Performative, Content) : broadcast(jason) <-
     .broadcast(Performative, message(Sender, Performative, Content));
-    println("[Assistant] Broadcasted via Jason: ", Content).
+    println("[Assistant] Broadcasted via Jason: ", Content)
+    .
     
 
 

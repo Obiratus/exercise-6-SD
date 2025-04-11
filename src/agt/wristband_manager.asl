@@ -22,11 +22,12 @@ owner_state(_).
 */
 @start_plan
 +!start : td("https://was-course.interactions.ics.unisg.ch/wake-up-ontology#Wristband", Url) <-
-    .print("Hello world");
+    .print("[wristband manager] starting...");
     // performs an action that creates a new artifact of type ThingArtifact, named "wristband" using the WoT TD located at Url
     // the action unifies ArtId with the ID of the artifact in the workspace
     makeArtifact("wristband", "org.hyperagents.jacamo.artifacts.wot.ThingArtifact", [Url], ArtId);
-    !read_owner_state. // creates the goal !read_owner_state
+    !read_owner_state // creates the goal !read_owner_state
+    .
 
 /* 
  * Plan for reacting to the addition of the goal !read_owner_state
@@ -43,7 +44,8 @@ owner_state(_).
     .nth(0,OwnerStateLst,OwnerState); // performs an action that unifies OwnerState with the element of the list OwnerStateLst at index 0
     -+owner_state(OwnerState); // updates the beleif owner_state 
     .wait(5000);
-    !read_owner_state. // creates the goal !read_owner_state
+    !read_owner_state // creates the goal !read_owner_state
+    . 
 
 /* 
  * Plan for reacting to the addition of the belief !owner_state
@@ -53,7 +55,8 @@ owner_state(_).
 */
 @owner_state_plan
 +owner_state(State) : true <-
-    .print("The owner is ", State).
+    .print("The owner is ", State)
+    .
 
 /* Import behavior of agents that work in CArtAgO environments */
 { include("$jacamoJar/templates/common-cartago.asl") }
