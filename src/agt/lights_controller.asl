@@ -22,7 +22,20 @@ lights("off").
 */
 @start_plan
 +!start : td("https://was-course.interactions.ics.unisg.ch/wake-up-ontology#Lights", Url) <-
-    .print("Hello world").
+    .print("Lights Controller starting...");
+    .my_name(MyName);
+    makeArtifact("mqtt_artifact_lc", "room.MQTTArtifact", [MyName], ArtifactId); // Create and associate artifact
+    focus(ArtifactId). // Focus on the artifact
+
+/*
+ * Plan to handle observable changes in the artifact
+ * Triggered when the "received_message" observable property is added.
+ */
+@handle_received_message
++received_message(Sender, Performative, Content) : true <-
+    println("[Lights Controller] Message received from ", Sender, " with content: ", Content).
+    
+
 
 /* Import behavior of agents that work in CArtAgO environments */
 { include("$jacamoJar/templates/common-cartago.asl") }

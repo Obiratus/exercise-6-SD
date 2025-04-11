@@ -37,34 +37,34 @@ This repository contains a partial implementation of a [JaCaMo](https://jacamo-l
 
 ## Task 1 
 Complete the implementation of following:
-- the [`MQTTArtifact.java`](src/env/room/DweetArtifact.java) for enabling agents to send messages via [MQTT](https://mqtt.org) and create observable properties for perceived messages.
+- the [MQTTArtifact.java](src/env/room/MQTTArtifact.java) for enabling agents to send messages via [MQTT](https://mqtt.org) and create observable properties for perceived messages.
   - HINT: Use different clientIds for different MQTT clients in different MQTTArtifacts.
   - HINT: Use the syntax sender_agent,performative,content for messages. Performatives different from tell will not be considered in the exercise.
   - HINT: Create observable properties by calling an internal operation when performing this creation from a callback function.
   - HINT: Define a custom MQTTCallback class for processing perceived messages and instantiating new observable properties based on them.
-- the [`personal_assistant.asl`](src/agt/personal_assistant.asl) so that the personal assistant can create a `DweetArtifact` instance, and achieve the goal of sending a message by using the artifact.
+- the [personal_assistant.asl](src/agt/personal_assistant.asl) so that the personal assistant can create a `DweetArtifact` instance, and achieve the goal of sending a message by using the artifact.
   - HINT: The [CArtAgO By Example guide](https://www.emse.fr/~boissier/enseignement/maop13/courses/cartagoByExamples.pdf) provides documentation and examples on how to program CArtAgO artifacts and their operations, and how to program agents that create artifacts and invoke artifact operations
 
 ## Task 2
 Complete the implementation of following:
-- the [`calendar_manager.asl`](src/agt/calendar_manager.asl) can create and interact with an artifact based on the [W3C WoT Thing Description of a calendar service](https://github.com/Interactions-HSG/example-tds/blob/was/tds/calendar-service.ttl);
-- the [`blinds_controller.asl`](src/agt/blinds_controller.asl) can create and interact with an artifact based on the [W3C WoT Thing Description of a set of blinds](https://github.com/Interactions-HSG/example-tds/blob/was/tds/blinds.ttl);
-- the [`lights_controller.asl`](src/agt/lights_controller.asl) can create and interact with an artifact based on the [W3C WoT Thing Description of a set of lights](https://github.com/Interactions-HSG/example-tds/blob/was/tds/lights.ttl).
+- the [calendar_manager.asl](src/agt/calendar_manager.asl) can create and interact with an artifact based on the [W3C WoT Thing Description of a calendar service](https://github.com/Interactions-HSG/example-tds/blob/was/tds/calendar-service.ttl);
+- the [blinds_controller.asl](src/agt/blinds_controller.asl) can create and interact with an artifact based on the [W3C WoT Thing Description of a set of blinds](https://github.com/Interactions-HSG/example-tds/blob/was/tds/blinds.ttl);
+- the [lights_controller.asl](src/agt/lights_controller.asl) can create and interact with an artifact based on the [W3C WoT Thing Description of a set of lights](https://github.com/Interactions-HSG/example-tds/blob/was/tds/lights.ttl).
   - HINTS:
     -  The repository of the [jacamo-hypermedia](https://github.com/HyperAgents/jacamo-hypermedia) library provides examples on how agents can create and interact with instances of [ThingArtifact.java](https://github.com/HyperAgents/jacamo-hypermedia/blob/main/lib/src/main/java/org/hyperagents/jacamo/artifacts/wot/ThingArtifact.java);
-    - In [`wristband_manager.asl`](src/agt/wristband_manager.asl) the agent creates and invokes an operation of a `ThingArtifact`.
+    - In [wristband_manager.asl](src/agt/wristband_manager.asl) the agent creates and invokes an operation of a `ThingArtifact`.
 
 ## Task 3
 Complete the implementation of following so that the agents can inform the [`personal_assistant.asl`](src/agt/personal_assistant.asl) about the state of the environment:
-- the [`wristband_manager.asl`](src/agt/wristband_manager.asl);
-- the [`calendar_manager.asl`](src/agt/calendar_manager.asl);
-- the [`blinds_controller.asl`](src/agt/blinds_controller.asl);
+- the [wristband_manager.asl](src/agt/wristband_manager.asl);
+- the [calendar_manager.asl](src/agt/calendar_manager.asl);
+- the [blinds_controller.asl](src/agt/blinds_controller.asl);
 - the [`lights_controller.asl`](src/agt/lights_controller.asl).
 
 ### Task 4
 Complete the implementation of following so that the agents can coordinate with each other based on the [FIPA Contract Net Interaction Protocol](http://www.fipa.org/specs/fipa00029/SC00029H.html): 
 - the [`personal_assistant.asl`](src/agt/personal_assistant.asl);
-- the [`blinds_controller.asl`](src/agt/blinds_controller.asl);
+- the [blinds_controller.asl](src/agt/blinds_controller.asl);
 - the [`lights_controller.asl`](src/agt/lights_controller.asl).
 
 Broadcast can be performed through Jason or MQTT (see [Task 1](#task-1)).
