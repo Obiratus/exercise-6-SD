@@ -6,7 +6,8 @@
 // that describes a Thing of type https://was-course.interactions.ics.unisg.ch/wake-up-ontology#Lights (was:Lights)
 td("https://was-course.interactions.ics.unisg.ch/wake-up-ontology#Lights", "https://raw.githubusercontent.com/Interactions-HSG/example-tds/was/tds/lights.ttl").
 
-// The agent initially believes that the lights are "off"
+
+/* Initial beliefs */ 
 lights("off").
 
 /* Initial goals */ 
@@ -28,7 +29,6 @@ lights("off").
     focus(ArtifactId); // Focus on the artifact
     makeArtifact("lights", "org.hyperagents.jacamo.artifacts.wot.ThingArtifact", [Url], ArtId);
     .wait(3000);
-    //!turn_light_on
     .
 
 /*
@@ -47,10 +47,10 @@ lights("off").
 @turn_light_on_plan
 +!turn_light_on : true <-
     invokeAction("https://was-course.interactions.ics.unisg.ch/wake-up-ontology#SetState",["on"]);
-    .print("Lights turned on");
-    -+lights("off");
+    .send(personal_assistant, untell, lights(State));
+    -lights("off");
     +lights("on");
-    !send_message("lights manager", "tell", "on"); 
+    //!send_message("lights manager", "tell", "on"); 
     .
 
 /* 
@@ -59,12 +59,38 @@ lights("off").
 @turn_light_off_plan
 +!turn_light_off : true <-
     invokeAction("https://was-course.interactions.ics.unisg.ch/wake-up-ontology#SetState",["off"]);
-    .print("Lights turned off");
-    -+lights("on");
+    .send(personal_assistant, untell, lights(State));
+    -lights("on");
     +lights("off");
-    !send_message("lights manager", "tell", "off"); 
-
+    //!send_message("lights manager", "tell", "off"); 
     .
+
+/* 
+ * Plan for reacting to the addition of the belief !lights
+ * Triggering event: addition of belief !lights
+ * Context: true (the plan is always applicable)
+ * Body: announces the current state of the light
+*/
+@lights_plan
++lights(State) : true <-
+    .print("Lights turned: ", State);
+    .send(personal_assistant, tell, lights(State))
+    .
+
+/* 
+ * Plan for reacting to the removal of the belief !lights
+ * Triggering event: removal of belief !lights
+ * Context: true (the plan is always applicable)
+ * Body: removes the old state of the light via untell
+*/
+@lights_removal_plan
+-lights(State) : true <-
+    .print("Lights state ", State, " removed via untell");
+    .send(personal_assistant, untell, lights(State))
+    .
+
+
+
 
 /* Plan to send a message using the internal operation defined in the artifact */
 @send_message_plan

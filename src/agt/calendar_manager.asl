@@ -1,13 +1,13 @@
 // calendar manager agent
 
-/* Initial beliefs */
-upcoming_event(none).
-
 
 // The agent has a belief about the location of the W3C Web of Thing (WoT) Thing Description (TD)
 // that describes a Thing of type https://was-course.interactions.ics.unisg.ch/wake-up-ontology#CalendarService (was:CalendarService)
 td("https://was-course.interactions.ics.unisg.ch/wake-up-ontology#CalendarService", "https://raw.githubusercontent.com/Interactions-HSG/example-tds/was/tds/calendar-service.ttl").
 
+
+/* Initial beliefs */ 
+upcoming_event(_).
 /* Initial goals */ 
 
 // The agent has the goal to start
@@ -28,7 +28,7 @@ td("https://was-course.interactions.ics.unisg.ch/wake-up-ontology#CalendarServic
     // performs an action that creates a new artifact of type ThingArtifact, named "wristband" using the WoT TD located at Url
     // the action unifies ArtId with the ID of the artifact in the workspace
     makeArtifact("calendar", "org.hyperagents.jacamo.artifacts.wot.ThingArtifact", [Url], ArtId);
-    .wait(3000);
+    .wait(4000);
     !read_upcoming_event.
 
 /* 
@@ -40,25 +40,52 @@ td("https://was-course.interactions.ics.unisg.ch/wake-up-ontology#CalendarServic
 */
 @read_upcoming_event_plan
 +!read_upcoming_event : true <-
+    -upcoming_event(Old_upcoming_event);
     // performs an action that exploits the TD Property Affordance of type was:ReadUpcomingEvent 
     readProperty("https://was-course.interactions.ics.unisg.ch/wake-up-ontology#ReadUpcomingEvent",  EventList);
     .nth(0,EventList,Event); 
+    +upcoming_event(Event);
     
-    // Check if the event has changed and publish only in that case
-    ?upcoming_event(CurrentEvent);
-    !check_different(Event,CurrentEvent,Result);
-    if (Result == true) { 
-        +upcoming_event(Event); // Update the stored belief about the event
-        .print("Upcoming event changed. New event: ", Event);
-        !send_message("calendar manager", "tell", Event); // Send MQTT message for the new event
-    } else {
-        .print("Upcoming event is still: ", Event);
-        .print("No Event changes to publish");
-    };
+    // // sending messages via mqtt, and only if the state changed
+    // // Check if the event has changed and publish only in that case
+    // ?upcoming_event(CurrentEvent);
+    // !check_different(Event,CurrentEvent,Result);
+    // if (Result == true) { 
+    //     -+upcoming_event(Event); // Update the stored belief about the event
+    //     .print("Upcoming event changed. New event: ", Event);
+    //     !send_message("calendar manager", "tell", Event); 
+    // } else {
+    //     .print("Upcoming event is still: ", Event);
+    //     .print("No Event changes to publish");
+    // };
 
     .wait(5000);
-    !read_upcoming_event. // creates the goal !read_upcoming_event
+    !read_upcoming_event. 
 
+/* 
+ * Plan for reacting to the addition of the belief !upcoming_event
+ * Triggering event: addition of belief !upcoming_event
+ * Context: true (the plan is always applicable)
+ * Body: announces the current ewvent
+*/
+@ucoming_event_plan
++upcoming_event(Event) : true <-
+    .print("Upcoming event ", Event);
+    .send(personal_assistant, tell, upcoming_event(Event))
+    .
+
+
+/* 
+ * Plan for reacting to the addition of the belief !old_upcoming_event
+ * Triggering event: addition of belief !old_upcoming_event
+ * Context: true (the plan is always applicable)
+ * Body: announces removes the belief about the old event (untells)
+*/
+@upcoming_event_remove_plan
+-upcoming_event(Event) : true <-
+    .print("Upcoming event ", Event," removed via untell");
+    .send(personal_assistant, untell, upcoming_event(Event))
+    .
 
 
 /* Plan to send a message using the internal operation defined in the artifact */

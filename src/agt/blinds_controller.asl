@@ -50,9 +50,8 @@ blinds("lowered").
 +!raise_blinds : true <-
     invokeAction("https://was-course.interactions.ics.unisg.ch/wake-up-ontology#SetState",["raised"]);
     .print("Blinds raised");
-    -+blinds("lowered");
+    -blinds("lowered");
     +blinds("raised");
-    !send_message("blinds manager", "tell", "raised"); 
     .
 
 /* 
@@ -62,10 +61,37 @@ blinds("lowered").
 +!lower_blinds : true <-
     invokeAction("https://was-course.interactions.ics.unisg.ch/wake-up-ontology#SetState",["lowered"]);
     .print("Blinds lowered");
-    -+blinds("raised");
+    -blinds("raised");
     +blinds("lowered");
-    !send_message("blinds manager", "tell", "lowered"); 
     .
+
+
+/* 
+ * Plan for reacting to the addition of the belief !blinds
+ * Triggering event: addition of belief !blinds
+ * Context: true (the plan is always applicable)
+ * Body: announces the current state of the blinds
+*/
+@blinds_plan
++blinds(State) : true <-
+    .print("Blinds: ", State);
+    .send(personal_assistant, tell, blinds(State))
+    .
+
+/* 
+ * Plan for reacting to the removal of the belief !lights
+ * Triggering event: removal of belief !lights
+ * Context: true (the plan is always applicable)
+ * Body: removes the old state of the blinds via untell
+*/
+@blinds_removal_plan
+-blinds(State) : true <-
+    .print("Blinds state ", State, " removed via untell");
+    .send(personal_assistant, untell, blinds(State))
+    .
+
+
+
 
 
 /* Plan to send a message using the internal operation defined in the artifact */
