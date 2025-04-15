@@ -99,13 +99,14 @@ public class MQTTArtifact extends Artifact {
 
     @INTERNAL_OPERATION
     public void addMessage(String agent, String performative, String content) {
-        if ("tell".equalsIgnoreCase(performative)) {
-            // Define an observable property for the received message
-            defineObsProperty("received_message", agent, performative, content);
-            //     System.out.println("["+ agent + "] Observable property added: " + agent + ", " + content);
+        if (hasObsProperty("received_message")) {
+            updateObsProperty("received_message", agent, performative, content);
         } else {
-            System.out.println("["+ agent + "] Unsupported performative received: " + performative);
+            defineObsProperty("received_message", agent, performative, content);
+            System.out.println("Observable property created: " + agent + "," + performative + "," + content);
         }
+        
+
     }
 
 

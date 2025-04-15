@@ -31,13 +31,38 @@ lights("off").
     .wait(3000);
     .
 
+
+
+@handle_received_message
++received_message(Sender, "cfp", "increase_illuminance") : true <-
+    .print("CFP received from: ", Sender, " with content: increase_illuminance");
+
+    if (lights("off")) {
+        .wait(1000);
+        .print("Proposing to switch on the lights...");
+        .send(Sender, propose, "artificial_light");
+    } else {
+        .print("Unable to contribute. Lights are already on.");
+        .send(Sender, refuse, "light_already_on");
+    }
+    .
+
+
 /*
  * Plan to handle observable changes in the artifact
  * Triggered when the "received_message" observable property is added.
  */
-@handle_received_message
 +received_message(Sender, Performative, Content) : true <-
     println("[Lights Controller] Message received from ", Sender, " with content: ", Content)
+    .
+
+
+/* 
+* Plan to react to the added goal wake_up_method("artificial_light")
+*/
+@raise_blinds_goal_plan
++!wake_up_method("artificial_light") : true <-
+    !turn_light_on;
     .
     
 
@@ -89,14 +114,6 @@ lights("off").
     .send(personal_assistant, untell, lights(State))
     .
 
-
-
-
-/* Plan to send a message using the internal operation defined in the artifact */
-@send_message_plan
-+!send_message(Sender, Performative, Content) : true <-
-    sendMsg(Sender, Performative, Content)
-    .
 
 
 

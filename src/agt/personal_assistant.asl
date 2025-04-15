@@ -1,6 +1,7 @@
 // personal assistant agent
 
 broadcast(mqtt).
+// broadcast(json).
 
 /* Task 3.2: Add user preferences for wake-up methods and implement inference rule */
  
@@ -11,8 +12,8 @@ broadcast(mqtt).
     <-
         .print("Initializing user preferences for wake-up methods...");
 
-        +ranking(wake_up_method(natural_light), 0);
-        +ranking(wake_up_method(artificial_light), 1);
+        +ranking(wake_up_method("natural_light"), 0);
+        +ranking(wake_up_method("artificial_light"), 1);
         .print("User preferences initialized.");
     .
 
@@ -22,12 +23,31 @@ best_option(Option)
         & not (ranking(wake_up_method(_), LowerRank) & LowerRank < Rank).
 
 
+// /* Inference rule for determining the controller of the wake up method */
+// option_controller("natural_light", blinds_controller).
+// option_controller("artificial_light", lights_controller).
+
+
 
 /* Initial beliefs */
+wake_up_ongoing("false").
+wake_up_problem_outsourced("false").
+wake_up_method(_).
+
 
 /* Initial goals */
 // The agent has the goal to start
 !start.
+
+// plan to create received_message events in the desired format.
++!kqml_received(Sender, propose, Content, _MessageId) <-
+   .print("Received propose message: translating kqml_received from ", Sender, " with content: ", Content);
+   +received_message(Sender, propose, Content).
+
++!kqml_received(Sender, refuse, Reason, _MessageId) <-
+   .print("Received refuse message: translating kqml_received from ", Sender, " with reason: ", Reason);
+   +received_message(Sender, refuse, Reason).
+
 
 /*
  * Plan for reacting to the addition of the goal !start
@@ -44,76 +64,225 @@ best_option(Option)
     .
     
 
-/* Plan to send a message using the internal operation defined in the artifact */
+/* Plan to send a message using the internal operation defined in the artifact (via MQTT)*/
 +!send_message(Sender, Performative, Content) : true <-
+    .print("Sending message using MQTT from ", Sender, " with content: ", Content);
     sendMsg(Sender, Performative, Content)
+    .
+
+/*
+ * Broadcasting
+ * Depending on selected Mode, the agent  sends either via MQTT or Jason’s broadcast.
+ */
+@selective_broadcast_plan
++!selective_broadcast(Sender, Performative, Content) : broadcast(mqtt) <-
+    !send_message(Sender, Performative, Content)
+    .
+
++!selective_broadcast(Sender, Performative, Content) : broadcast(jason) <-
+    .broadcast(tell, message(Sender, Performative, Content));
+    .print("Broadcasting using Jason: ", Content)
     .
     
 
 
 /*
- * Plan for reacting to the received_message from the calendar manager
- * Triggered when the calendar manager sends the "now" belief.
+ * Plan to react to the belief that there is an upcoming event "now"
+ * and decides whether to wake the user or let them enjoy the event.
  */
-+received_message("calendar manager", "tell", "now") : received_message("wristband manager", "tell", "awake") <-
-    .print("Enjoy your event.")
-    .
++upcoming_event("now") : true <-
+{
+    // Query the current owner state belief
+    ?owner_state(State);
 
-+received_message("calendar manager", "tell", "now") :
-    received_message("wristband manager", "tell", "asleep") <-
-    .print("Starting wake-up routine.");
-    //!initiate_wake_up_routine
-    .
+    // Context check: "awake" vs "asleep"
+    if (State == "awake") {
+        .print("Enjoy your event.");
+    } else {
+        if (State == "asleep") {
+            .print("Starting wake-up routine...");
+            !initiate_wake_up_routine;
+        } else {
+            .print("Unknown owner state: ", State, ". Unable to determine action.");
+        }
+    }
+}.
+
 
 
 /* Plan to initiate the wake-up routine */
-+!initiate_wake_up_routine : true <-
-    .print("[personal assistant] Coordinating with blinds and lights controllers...");
-   // !start_contract_net_protocol(["blinds_controller", "lights_controller"], "increase_illuminance")
++!initiate_wake_up_routine : wake_up_ongoing("false") & wake_up_problem_outsourced("false")
+ <-
+   -+wake_up_ongoing("true");
+   +proposals([]);
+   .print("Coordinating with blinds and lights controllers...");
+   !selective_broadcast("personal_assistant", "cfp", "increase_illuminance");
+   .wait(3000);
+   !process_responses;
+   -+wake_up_ongoing("false");
+   .
+
++!initiate_wake_up_routine : wake_up_ongoing("true") & wake_up_problem_outsourced("false")
+ <-
+   -+wake_up_ongoing("true");
+   .print("Wake-up routine is already running");
+   .
+
++!initiate_wake_up_routine : wake_up_ongoing("true") & wake_up_problem_outsourced("true")
+ <-
+   .print("Wake-up problem outsourced to Philip.");
+   .
+
++!initiate_wake_up_routine : wake_up_ongoing("false") & wake_up_problem_outsourced("true")
+ <-
+   .print("Wake-up problem outsourced to Philip.");
    .
 
 
 
+@handle_propose
++received_message(Sender, propose, Content) : proposals(CurrentProposals) <-
+    .print("Proposal received from ", Sender, " with content: ", Content);
+    // Add the proposal to the list of proposals
+    +proposals([proposal(Sender, Content) | CurrentProposals]);
+    -proposals(CurrentProposals).
 
-// /* Contract Net Protocol (CNP) Initiator Plan */
-// +!start_contract_net_protocol(Agents, Task) : true <-
-//     .print("[personal assistant] Sending call for proposals for task: ", Task, " to agents: ", Agents);
-//     .broadcast(cfp, Task, Agents); // Broadcast CFP for the task
-//     .await(reply(Sender, "propose", ProposalContent), 5000, Replies); // Await proposals for up to 5 seconds
-//     !process_proposals(Replies, Task).
-
-
-// /* Process received proposals */
-// +!process_proposals(Replies, Task) :
-//     best_option(natural_light)
-//     & member(reply(Sender, "propose", wake_up_method(natural_light)), Replies) <-
-//     .print("[personal assistant] User prefers natural light. Accepting proposal...");
-//     .send(Sender, acceptProposal, Task);
-//     !reject_other_proposals(Replies, Sender).
-
-// +!process_proposals(Replies, Task) :
-//     best_option(artificial_light)
-//     & member(reply(Sender, "propose", wake_up_method(artificial_light)), Replies) <-
-//     .print("[personal assistant] User prefers artificial light. Accepting proposal...");
-//     .send(Sender, acceptProposal, Task);
-//     !reject_other_proposals(Replies, Sender).
+@handle_refuse
++received_message(Sender, refuse, Reason) : true <-
+    .print("Refusal received from ", Sender, " with reason: ", Reason)
+    .
 
 
 
+@process_responses
++!process_responses : proposals(Proposals) <-
+    .print("Processing proposals: ", Proposals);
 
-// /* Plan to reject all proposals except the accepted one */
-// +!reject_other_proposals(Replies, AcceptedSender) : true <-
-//     forall(
-//         member(reply(Sender, "propose", _), Replies) &
-//         Sender \== AcceptedSender,
-//         .send(Sender, rejectProposal, "Task not preferred")
-//     ).
+    if (Proposals == []) {
+        // No valid proposals received
+        .print("No proposals received! Unable to proceed with wake-up attempts. A dear friend is needed.");
+        !send_message("personal_assistant", tell, "Dear Philip, my master Simon needs a proper beat-up to wake up.");
+        -+wake_up_problem_outsourced("true");
+    
+
+    } else {
+        // Dynamically filter proposals matching wake-up methods
+        .print("Checking if proposals match user wake-up preferences...");
+        +valid_proposals([]); // Initialize valid proposals as an empty list
+
+        // Process each proposal recursively
+        !process_proposal_list(Proposals);
+
+        // Retrieve the list of valid proposals
+        ?valid_proposals(ValidProposals);
+        .print("Valid proposals based on preferences: ", ValidProposals);
+
+        if (ValidProposals == []) {
+            .print("No valid wake-up method proposals were found. Unable to proceed.");
+        } else {
+            // Dynamically build the AvailableRanks list
+            +available_ranks([]); // Initialize AvailableRanks as an empty list
+            !extract_ranks(ValidProposals);
+
+            // Retrieve the built list of AvailableRanks
+            ?available_ranks(AvailableRanks);
+            .print("Available ranks: ", AvailableRanks);
+
+            // Find the minimum rank
+            !find_min(AvailableRanks, MinimumRank);
+            .print("Lowest rank is: ", MinimumRank);
+
+
+            // Find the option corresponding to the minimum rank
+            ?ranking(wake_up_method(BestOption), MinimumRank);
+            .print("Best available option selected: ", BestOption);
+            -+wake_up_method(BestOption);
+
+            // // Find the controller for the best option
+            // if (option_controller(BestOption, Controller)) {
+            //     .print("Controller determined for the best option: ", Controller);
+            // } else {
+            //     .print("Error: No controller found for the selected option: ", BestOption);
+            // }
+
+
+            // // Reject all other valid proposals
+            // .print("Rejecting all other valid proposals...");
+            // foreach ValidProposals[proposal(Sender, Content)] {
+            //     if (Sender != Controller) {
+            //         .print("Rejecting proposal from: ", Sender, " with content: ", Content);
+            //         .send(Sender, rejectProposal, Content);
+            //     };
+            // };
+
+            // Clean up processed beliefs
+            .abolish(received_message);
+            -received_message(lights_controller,propose,"artificial_light");
+            -received_message(blinds_controller,propose,"natural_light");
+            -proposals(Proposals);
+            -valid_proposals(ValidProposals); // Remove the temporary belief
+            -available_ranks(_); // Clear the ranks list
+        }
+    }.
+
+@find_min
++!find_min([X], Result) <- // Base case: Single element in the list
+    Result = X.
+
++!find_min([X | Rest], Result) <- // Recursive case
+    !find_min(Rest, MinRest); // Find the minimum of the rest of the list
+    if (X < MinRest) {
+        Result = X;
+    } else {
+        Result = MinRest;
+    }.
+
+
+@process_proposal_list
++!process_proposal_list([]) <- // Base case: Empty list
+    .print("Finished processing all proposals.").
+
++!process_proposal_list([proposal(Controller, Option) | Rest]) <-
+    // Check if the current proposal's option is a valid wake-up method
+    if (ranking(wake_up_method(Option), _)) {
+        .print("Valid option found: ", Option, " (from: ", Controller, ")");
+        !add_valid_proposal(proposal(Controller, Option)); // Add it to the valid proposals
+    };
+    !process_proposal_list(Rest). // Process the rest of the list
+
+@add_valid_proposal
++!add_valid_proposal(Proposal) : valid_proposals(CurrentProposals) <-
+    -valid_proposals(CurrentProposals);
+    +valid_proposals([Proposal | CurrentProposals]).
+
+@extract_ranks
++!extract_ranks([]) <- // Base case: Empty list
+    .print("Finished extracting ranks.").
+
++!extract_ranks([proposal(_, Option) | Rest]) <-
+    if (ranking(wake_up_method(Option), Rank)) {
+        !add_rank(Rank); // Add the rank to the `available_ranks` list
+    };
+    !extract_ranks(Rest). // Process the rest of the list
+
+@add_rank
++!add_rank(Rank) : available_ranks(CurrentRanks) <-
+    -available_ranks(CurrentRanks);
+    +available_ranks([Rank | CurrentRanks]).
 
 
 
-// /* Handle refuse messages */
-// +reply(Sender, "refuse", Content) : true <-
-//     .print("[personal assistant] ", Sender, " refused task: ", Content).
+/* Plan to send acceptance messages */
+@send_acceptance_plan
++wake_up_method("natural_light"): true <- 
+    .print("Sending acceptance to: blinds_controller for natural_light.");
+    .send(blinds_controller, achieve, wake_up_method("natural_light"));
+    .
+
++wake_up_method("artificial_light"): true <- 
+    .print("Sending acceptance to: lights_controller for artificial_light.");
+    .send(lights_controller, achieve, wake_up_method("artificial_light"));
+    .
 
 
 
@@ -129,19 +298,6 @@ best_option(Option)
     .
     
 
-
-
-/* Plan for selective broadcasting */
-@selective_broadcast_plan
-+!selective_broadcast(Sender, Performative, Content) : broadcast(mqtt) <-
-    !add_message(Sender, Performative, Content).
-    
-
-+!selective_broadcast(Sender, Performative, Content) : broadcast(jason) <-
-    .broadcast(Performative, message(Sender, Performative, Content));
-    println("[Assistant] Broadcasted via Jason: ", Content)
-    .
-    
 
 
 

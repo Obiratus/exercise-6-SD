@@ -62,7 +62,7 @@ upcoming_event(_).
     .wait(5000);
     !read_upcoming_event. 
 
-/* 
+/*
  * Plan for reacting to the addition of the belief !upcoming_event
  * Triggering event: addition of belief !upcoming_event
  * Context: true (the plan is always applicable)

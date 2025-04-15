@@ -11,6 +11,8 @@ blinds("lowered").
 
 /* Initial goals */ 
 
+
+
 // The agent has the goal to start
 !start.
 
@@ -33,15 +35,41 @@ blinds("lowered").
     //!raise_blinds
     .
 
+@handle_received_message
++received_message(Sender, "cfp", "increase_illuminance") : true <-
+    .print("CFP received from: ", Sender, " with content: increase_illuminance");
+
+    if (blinds("lowered")) {
+        // If the blinds can open to increase illumination
+        .print("Proposing to open the blinds...");
+        .send(Sender, propose, "natural_light");
+
+    } else {
+        // If the blinds are already raised, refuse the request
+        .print("Unable to contribute. Blinds are already raised.");
+        .send(Sender, refuse, "blinds_already_raised");
+    }
+    .
+
+
 /*
  * Plan to handle observable changes in the artifact
  * Triggered when the "received_message" observable property is added.
  */
-@handle_received_message
+
 +received_message(Sender, Performative, Content) : true <-
-    println("[Blinds Controller] Message received from ", Sender, " with content: ", Content)
+    println("Message received from ", Sender, " with content: ", Content)
     .
     
+
+
+/* 
+* Plan to rreact to the added goal wake_up_method("natural_light")
+*/
+@raise_blinds_goal_plan
++!wake_up_method("natural_light") : true <-
+    !raise_blinds;
+    .
 
 /* 
 * Plan to raise the blinds.
