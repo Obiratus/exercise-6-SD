@@ -1,9 +1,9 @@
 // personal assistant agent
 
 broadcast(mqtt).
-// broadcast(json).
+//broadcast(jason).
 
-/* Task 3.2: Add user preferences for wake-up methods and implement inference rule */
+/* Add user preferences for wake-up methods and implement inference rule */
  
 !initialize_user_preferences.
 
@@ -21,11 +21,6 @@ broadcast(mqtt).
 best_option(Option)
     :-  ranking(wake_up_method(Option), Rank)
         & not (ranking(wake_up_method(_), LowerRank) & LowerRank < Rank).
-
-
-// /* Inference rule for determining the controller of the wake up method */
-// option_controller("natural_light", blinds_controller).
-// option_controller("artificial_light", lights_controller).
 
 
 
@@ -80,7 +75,7 @@ wake_up_method(_).
     .
 
 +!selective_broadcast(Sender, Performative, Content) : broadcast(jason) <-
-    .broadcast(tell, message(Sender, Performative, Content));
+    .broadcast(tell, received_message(Sender, Performative, Content));
     .print("Broadcasting using Jason: ", Content)
     .
     
@@ -110,14 +105,14 @@ wake_up_method(_).
 
 
 
-/* Plan to initiate the wake-up routine */
+/* Plans to initiate the wake-up routine */
 +!initiate_wake_up_routine : wake_up_ongoing("false") & wake_up_problem_outsourced("false")
  <-
    -+wake_up_ongoing("true");
    +proposals([]);
    .print("Coordinating with blinds and lights controllers...");
    !selective_broadcast("personal_assistant", "cfp", "increase_illuminance");
-   .wait(3000);
+   .wait(5000);
    !process_responses;
    -+wake_up_ongoing("false");
    .
@@ -131,15 +126,19 @@ wake_up_method(_).
 +!initiate_wake_up_routine : wake_up_ongoing("true") & wake_up_problem_outsourced("true")
  <-
    .print("Wake-up problem outsourced to Philip.");
+    -received_message(lights_controller,refuse,"light_already_on");
+    -received_message(blinds_controller,refuse,"blinds_already_raised");
    .
 
 +!initiate_wake_up_routine : wake_up_ongoing("false") & wake_up_problem_outsourced("true")
  <-
    .print("Wake-up problem outsourced to Philip.");
+    -received_message(lights_controller,refuse,"light_already_on");
+    -received_message(blinds_controller,refuse,"blinds_already_raised");
    .
 
 
-
+/* Plans to handle the proposals and refusals*/
 @handle_propose
 +received_message(Sender, propose, Content) : proposals(CurrentProposals) <-
     .print("Proposal received from ", Sender, " with content: ", Content);
@@ -153,7 +152,7 @@ wake_up_method(_).
     .
 
 
-
+/* Plans to handle the responses after the cfp time is up*/
 @process_responses
 +!process_responses : proposals(Proposals) <-
     .print("Processing proposals: ", Proposals);
@@ -181,7 +180,7 @@ wake_up_method(_).
             .print("No valid wake-up method proposals were found. Unable to proceed.");
         } else {
             // Dynamically build the AvailableRanks list
-            +available_ranks([]); // Initialize AvailableRanks as an empty list
+            +available_ranks([]); 
             !extract_ranks(ValidProposals);
 
             // Retrieve the built list of AvailableRanks
@@ -198,39 +197,31 @@ wake_up_method(_).
             .print("Best available option selected: ", BestOption);
             -+wake_up_method(BestOption);
 
-            // // Find the controller for the best option
-            // if (option_controller(BestOption, Controller)) {
-            //     .print("Controller determined for the best option: ", Controller);
-            // } else {
-            //     .print("Error: No controller found for the selected option: ", BestOption);
-            // }
-
-
-            // // Reject all other valid proposals
-            // .print("Rejecting all other valid proposals...");
-            // foreach ValidProposals[proposal(Sender, Content)] {
-            //     if (Sender != Controller) {
-            //         .print("Rejecting proposal from: ", Sender, " with content: ", Content);
-            //         .send(Sender, rejectProposal, Content);
-            //     };
-            // };
+            // Reject all other valid proposals
+            !reject_proposals(ValidProposals, BestOption);
 
             // Clean up processed beliefs
             .abolish(received_message);
+            -wake_up_method(BestOption);
             -received_message(lights_controller,propose,"artificial_light");
             -received_message(blinds_controller,propose,"natural_light");
+            -received_message(lights_controller,refuse,"light_already_on");
+            -received_message(blinds_controller,refuse,"blinds_already_raised");
             -proposals(Proposals);
             -valid_proposals(ValidProposals); // Remove the temporary belief
             -available_ranks(_); // Clear the ranks list
+            
         }
     }.
 
+
+/* Helper Plans to find the lowest rank, in the valid proposal list*/
 @find_min
-+!find_min([X], Result) <- // Base case: Single element in the list
++!find_min([X], Result) <- 
     Result = X.
 
-+!find_min([X | Rest], Result) <- // Recursive case
-    !find_min(Rest, MinRest); // Find the minimum of the rest of the list
++!find_min([X | Rest], Result) <- 
+    !find_min(Rest, MinRest); 
     if (X < MinRest) {
         Result = X;
     } else {
@@ -238,22 +229,25 @@ wake_up_method(_).
     }.
 
 
+/* Helper Plans to process the proposal list and generate the valid proposal list*/
 @process_proposal_list
-+!process_proposal_list([]) <- // Base case: Empty list
++!process_proposal_list([]) <- 
     .print("Finished processing all proposals.").
 
 +!process_proposal_list([proposal(Controller, Option) | Rest]) <-
     // Check if the current proposal's option is a valid wake-up method
     if (ranking(wake_up_method(Option), _)) {
         .print("Valid option found: ", Option, " (from: ", Controller, ")");
-        !add_valid_proposal(proposal(Controller, Option)); // Add it to the valid proposals
+        !add_valid_proposal(proposal(Controller, Option)); 
     };
-    !process_proposal_list(Rest). // Process the rest of the list
+    !process_proposal_list(Rest). 
 
 @add_valid_proposal
 +!add_valid_proposal(Proposal) : valid_proposals(CurrentProposals) <-
     -valid_proposals(CurrentProposals);
     +valid_proposals([Proposal | CurrentProposals]).
+
+/* Helper Plans to get the wake up ranks of all elemnts in the valid proposal list*/
 
 @extract_ranks
 +!extract_ranks([]) <- // Base case: Empty list
@@ -284,8 +278,17 @@ wake_up_method(_).
     .send(lights_controller, achieve, wake_up_method("artificial_light"));
     .
 
+/* Plan to send reject-proposal messages */
+@send_reject_plan
++!reject_proposals([], _) <-
+    .print("All invalid proposals have been rejected.").
 
-
++!reject_proposals([proposal(Sender, Content) | Rest], BestOption) <-
+    if (Content \== BestOption) {
+        .print("Rejecting proposal from: ", Sender, " with content: ", Content);
+        .send(Sender, rejectProposal, Content);
+    };
+    !reject_proposals(Rest, BestOption).
 
 
 /*
@@ -297,9 +300,6 @@ wake_up_method(_).
     println("[Assistant] Message received from ", Sender, " with content: ", Content,  " no applicable plan was found")
     .
     
-
-
-
 
 /* Import behaviors of agents interacting in CArtAgO environments */
 { include("$jacamoJar/templates/common-cartago.asl") }

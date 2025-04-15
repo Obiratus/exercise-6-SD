@@ -16,6 +16,11 @@ blinds("lowered").
 // The agent has the goal to start
 !start.
 
+// plan to create received_message events in the desired format.
++!kqml_received(Sender, rejectProposal, Content, _MessageId) <-
+   .print("Received reject-proposal message: translating kqml_received from ", Sender, " with content: ", Content);
+   +received_message(Sender, rejectProposal, Content).
+
 /* 
  * Plan for reacting to the addition of the goal !start
  * Triggering event: addition of goal !start
@@ -51,6 +56,17 @@ blinds("lowered").
     }
     .
 
+/*
+ * Plan to handle the reject proposal messages
+ */
+@handle_reject_proposal
++received_message(Sender, rejectProposal, Content) : true <-
+    .print("Reject proposal received from ", Sender, " with reason: ", Content);
+    -received_message(personal_assistant,rejectProposal,"natural_light");
+    -received_message("personal_assistant", "cfp", "increase_illuminance")[source(personal_assistant)];
+    .
+
+
 
 /*
  * Plan to handle observable changes in the artifact
@@ -77,7 +93,6 @@ blinds("lowered").
 @raise_blinds_plan
 +!raise_blinds : true <-
     invokeAction("https://was-course.interactions.ics.unisg.ch/wake-up-ontology#SetState",["raised"]);
-    .print("Blinds raised");
     -blinds("lowered");
     +blinds("raised");
     .
@@ -88,7 +103,6 @@ blinds("lowered").
 @lower_blinds_plan
 +!lower_blinds : true <-
     invokeAction("https://was-course.interactions.ics.unisg.ch/wake-up-ontology#SetState",["lowered"]);
-    .print("Blinds lowered");
     -blinds("raised");
     +blinds("lowered");
     .
@@ -107,8 +121,8 @@ blinds("lowered").
     .
 
 /* 
- * Plan for reacting to the removal of the belief !lights
- * Triggering event: removal of belief !lights
+ * Plan for reacting to the removal of the belief !blinds
+ * Triggering event: removal of belief !blinds
  * Context: true (the plan is always applicable)
  * Body: removes the old state of the blinds via untell
 */

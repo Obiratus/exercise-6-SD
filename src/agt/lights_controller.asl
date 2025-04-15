@@ -15,6 +15,12 @@ lights("off").
 // The agent has the goal to start
 !start.
 
+
+// plan to create received_message events in the desired format.
++!kqml_received(Sender, rejectProposal, Content, _MessageId) <-
+   .print("Received reject-proposal message: translating kqml_received from ", Sender, " with content: ", Content);
+   +received_message(Sender, rejectProposal, Content).
+
 /* 
  * Plan for reacting to the addition of the goal !start
  * Triggering event: addition of goal !start
@@ -36,6 +42,7 @@ lights("off").
 @handle_received_message
 +received_message(Sender, "cfp", "increase_illuminance") : true <-
     .print("CFP received from: ", Sender, " with content: increase_illuminance");
+    
 
     if (lights("off")) {
         .wait(1000);
@@ -49,13 +56,22 @@ lights("off").
 
 
 /*
+ * Plan to handle the reject proposal messages
+ */
+@handle_reject_proposal
++received_message(Sender, rejectProposal, Content) : true <-
+    .print("Reject proposal received from ", Sender, " with reason: ", Content);
+    -received_message(personal_assistant,rejectProposal,"artificial_light");
+    -received_message("personal_assistant", "cfp", "increase_illuminance")[source(personal_assistant)];
+    .
+
+/*
  * Plan to handle observable changes in the artifact
  * Triggered when the "received_message" observable property is added.
  */
 +received_message(Sender, Performative, Content) : true <-
     println("[Lights Controller] Message received from ", Sender, " with content: ", Content)
     .
-
 
 /* 
 * Plan to react to the added goal wake_up_method("artificial_light")
